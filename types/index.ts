@@ -67,6 +67,19 @@ export interface AIAnalysis {
   confidence?: number;
 }
 
+export interface TimelapsePreference {
+  enabled: boolean;
+  duration: '7days' | '14days' | '30days' | '90days' | '180days' | '1year';
+  fps?: number;
+}
+
+export interface SymptomSubmission {
+  description: string;
+  aiQuestions: string[];
+  aiResponses: string[];
+  submittedAt: Timestamp;
+}
+
 export interface Photo {
   id: string;
   userId: string;
@@ -79,6 +92,8 @@ export interface Photo {
   aiAnalysis?: AIAnalysis;
   metadata: PhotoMetadata;
   diaryEntry?: string;
+  timelapsePreference?: TimelapsePreference;
+  symptomSubmission?: SymptomSubmission;
 }
 
 export interface Symptom {

@@ -356,3 +356,64 @@ Format your response as a JSON array of strings:
     return [];
   }
 }
+
+/**
+ * Generate follow-up questions based on photo and detailed symptom description
+ */
+export async function generateSymptomFollowUpQuestions(
+  photoUrl: string,
+  bodyArea: string,
+  symptomDescription: string
+): Promise<string[]> {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+    const imagePart = await prepareImageForGemini(photoUrl);
+
+    const prompt = `You are a medical assistant helping track mystery illnesses suspected to be related to mold, fungus, or parasite exposure.
+
+The user has submitted this detailed symptom description:
+"${symptomDescription}"
+
+Looking at this photo of ${bodyArea}, generate 5 specific follow-up questions to help:
+1. Understand the timeline and progression of symptoms
+2. Identify potential triggers (diet, environment, stress, hygiene)
+3. Discover patterns or correlations with daily activities
+4. Learn about previous treatments and their effectiveness
+5. Gather any missing critical information about the condition
+
+Focus on questions that would help identify if this could be mold, fungus, or parasite related.
+
+Format your response as a JSON array of strings:
+["question 1", "question 2", "question 3", "question 4", "question 5"]`;
+
+    const result = await model.generateContent([prompt, imagePart]);
+    const response = result.response;
+    const text = response.text();
+
+    // Parse JSON response
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+
+    // Fallback questions if parsing fails
+    return [
+      'When did you first notice these symptoms?',
+      'Have you noticed any patterns in when the symptoms worsen?',
+      'What environmental changes have occurred recently (new home, water damage, etc.)?',
+      'What treatments have you tried and what were the results?',
+      'Are there any other symptoms you experience alongside what you described?'
+    ];
+  } catch (error) {
+    console.error('Error generating symptom questions:', error);
+    // Return fallback questions
+    return [
+      'When did you first notice these symptoms?',
+      'Have you noticed any patterns in when the symptoms worsen?',
+      'What environmental changes have occurred recently?',
+      'What treatments have you tried?',
+      'Are there any other symptoms you experience?'
+    ];
+  }
+}

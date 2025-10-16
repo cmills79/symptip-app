@@ -60,7 +60,9 @@ This web application named Symptiq is a comprehensive health documentation appli
 ### Primary User Journey
 * User opens app and receives daily logging reminder
 * Captures photo of affected area with guided editing tools
-* Completes symptom journal with AI assistance for clarity
+* Is prompted to select time-lapse video time duration (7 days to 1 year)
+* User then submits in paragraph form in great detail thier medical issues and symptoms for AI reference.  
+* AI reviews submission and asks follow up questions to gain a complete understanding of the issue and what to look for in photo's.
 * Logs supplements and meals throughout the day
 * Reviews AI-generated insights and pattern analysis
 * Generates reports when preparing for medical appointments

@@ -14,6 +14,12 @@ interface PhotoEditorProps {
   bodyArea: string;
   customBodyArea?: string;
   onCancel: () => void;
+  onContinue?: (data: {
+    photoDataUrl: string;
+    annotations: Annotation[];
+    userGoals: string;
+    aiAnalysis?: any;
+  }) => void;
 }
 
 type Tool = 'none' | 'circle' | 'arrow';
@@ -23,6 +29,7 @@ export default function PhotoEditor({
   bodyArea,
   customBodyArea,
   onCancel,
+  onContinue,
 }: PhotoEditorProps) {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -195,6 +202,18 @@ export default function PhotoEditor({
   };
 
   const handleSave = async () => {
+    // If onContinue is provided, pass data to parent instead of uploading
+    if (onContinue) {
+      onContinue({
+        photoDataUrl,
+        annotations,
+        userGoals,
+        aiAnalysis,
+      });
+      return;
+    }
+
+    // Otherwise, upload directly (legacy behavior for standalone use)
     setSaving(true);
     try {
       // Get authenticated user from auth module
@@ -426,7 +445,7 @@ export default function PhotoEditor({
           disabled={saving}
           className="px-8 py-3 bg-accent text-background-paper rounded-lg hover:bg-accent-dark transition-colors font-medium disabled:opacity-50"
         >
-          {saving ? 'Saving...' : 'Save Photo'}
+          {saving ? 'Saving...' : (onContinue ? 'Continue' : 'Save Photo')}
         </button>
       </div>
     </div>

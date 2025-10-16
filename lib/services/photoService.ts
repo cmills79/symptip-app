@@ -1,7 +1,7 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase';
-import { Photo, BodyArea, Annotation } from '@/types';
+import { Photo, BodyArea, Annotation, TimelapsePreference, SymptomSubmission } from '@/types';
 import { compressImage, createThumbnail, generateId } from '@/lib/utils/helpers';
 
 interface UploadPhotoParams {
@@ -11,6 +11,8 @@ interface UploadPhotoParams {
   annotations: Annotation[];
   userGoals?: string;
   diaryEntry?: string;
+  timelapsePreference?: TimelapsePreference;
+  symptomSubmission?: SymptomSubmission;
 }
 
 export async function uploadPhoto({
@@ -20,6 +22,8 @@ export async function uploadPhoto({
   annotations,
   userGoals,
   diaryEntry,
+  timelapsePreference,
+  symptomSubmission,
 }: UploadPhotoParams): Promise<Photo> {
   try {
     // Convert data URL to Blob
@@ -72,6 +76,12 @@ export async function uploadPhoto({
     }
     if (diaryEntry !== undefined) {
       photoData.diaryEntry = diaryEntry;
+    }
+    if (timelapsePreference !== undefined) {
+      photoData.timelapsePreference = timelapsePreference;
+    }
+    if (symptomSubmission !== undefined) {
+      photoData.symptomSubmission = symptomSubmission;
     }
 
     // Save to Firestore
