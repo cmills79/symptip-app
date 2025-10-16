@@ -80,6 +80,32 @@ export interface SymptomSubmission {
   submittedAt: Timestamp;
 }
 
+export interface VideoMetadata {
+  duration: number; // seconds
+  fps: number;
+  resolution: string;
+  codec: string;
+  fileSize: number; // bytes
+}
+
+export interface Media {
+  id: string;
+  userId: string;
+  date: Timestamp;
+  type: 'photo' | 'video';
+  url: string;
+  thumbnail: string;
+  bodyArea: BodyArea;
+  annotations: Annotation[];
+  userGoals?: string;
+  aiAnalysis?: AIAnalysis;
+  metadata: PhotoMetadata | VideoMetadata;
+  diaryEntry?: string;
+  timelapsePreference?: TimelapsePreference;
+  symptomSubmission?: SymptomSubmission;
+  videoMetadata?: VideoMetadata; // Additional video-specific data
+}
+
 export interface Photo {
   id: string;
   userId: string;
@@ -94,6 +120,21 @@ export interface Photo {
   diaryEntry?: string;
   timelapsePreference?: TimelapsePreference;
   symptomSubmission?: SymptomSubmission;
+}
+
+export interface Video {
+  id: string;
+  userId: string;
+  date: Timestamp;
+  url: string;
+  thumbnail: string;
+  bodyArea: BodyArea;
+  duration: number;
+  userGoals?: string;
+  aiAnalysis?: AIAnalysis;
+  metadata: VideoMetadata;
+  symptomSubmission?: SymptomSubmission;
+  keyFrames?: string[]; // URLs to extracted frames for AI analysis
 }
 
 export interface Symptom {
@@ -178,4 +219,33 @@ export interface TimeLapseVideo {
   videoUrl: string;
   thumbnailUrl: string;
   createdAt: Timestamp;
+}
+
+export interface ResearchItem {
+  title: string;
+  summary: string;
+  url: string;
+  publishedAt?: string;
+  authors?: string[];
+  source?: string;
+  extra?: Record<string, unknown>;
+}
+
+export interface ResearchSourceResult {
+  searchTerm: string;
+  sourceId: string;
+  sourceName: string;
+  fetchedAt: string;
+  items: ResearchItem[];
+  warnings?: string[];
+  raw?: Record<string, unknown>;
+}
+
+export interface ResearchBrief {
+  query: string;
+  diseasesConsidered: string[];
+  sourceResults: ResearchSourceResult[];
+  aggregatedFindings: string[];
+  knowledgeGaps: string[];
+  aiSummary?: string;
 }

@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import BodyAreaSelector from '@/components/photos/BodyAreaSelector';
 import CameraCapture from '@/components/photos/CameraCapture';
+import VideoCapture from '@/components/photos/VideoCapture';
 import PhotoEditor from '@/components/photos/PhotoEditor';
 import TimelapsePreferenceSelector from '@/components/photos/TimelapsePreferenceSelector';
 import SymptomSubmissionForm from '@/components/photos/SymptomSubmissionForm';
 import AIFollowUpQuestions from '@/components/photos/AIFollowUpQuestions';
 import { PoseLandmarks, TimelapsePreference, Annotation } from '@/types';
 import { uploadPhoto } from '@/lib/services/photoService';
+import { uploadVideo } from '@/lib/services/videoService';
 import { generateSymptomFollowUpQuestions } from '@/lib/services/aiAnalysisService';
+import { generateVideoFollowUpQuestions, extractKeyFrames } from '@/lib/services/videoAnalysisService';
 import { Timestamp } from 'firebase/firestore';
 
 type Step = 'select-area' | 'capture' | 'edit' | 'timelapse-preference' | 'symptom-submission' | 'ai-questions' | 'complete';
@@ -22,8 +25,14 @@ export default function PhotoCapturePage() {
   const [step, setStep] = useState<Step>('select-area');
   const [selectedBodyArea, setSelectedBodyArea] = useState('');
   const [customBodyArea, setCustomBodyArea] = useState('');
+  const [mediaType, setMediaType] = useState<'photo' | 'video'>('photo');
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [poseLandmarks, setPoseLandmarks] = useState<PoseLandmarks[] | undefined>();
+
+  // Video-specific state
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
 
   // New state for multi-step workflow
   const [photoData, setPhotoData] = useState<{
@@ -46,10 +55,13 @@ export default function PhotoCapturePage() {
     }
   }, [user, router]);
 
-  const handleBodyAreaSelected = (area: string, customDesc?: string) => {
+  const handleBodyAreaSelected = (area: string, customDesc?: string, selectedMediaType?: 'photo' | 'video') => {
     setSelectedBodyArea(area);
     if (customDesc) {
       setCustomBodyArea(customDesc);
+    }
+    if (selectedMediaType) {
+      setMediaType(selectedMediaType);
     }
     setStep('capture');
   };
@@ -58,6 +70,14 @@ export default function PhotoCapturePage() {
     setCapturedPhoto(photoDataUrl);
     setPoseLandmarks(landmarks);
     setStep('edit');
+  };
+
+  const handleVideoCapture = (blob: Blob, duration: number, thumbnailDataUrl: string) => {
+    setVideoBlob(blob);
+    setVideoDuration(duration);
+    setVideoThumbnail(thumbnailDataUrl);
+    // Skip edit and timelapse steps for video, go straight to symptom submission
+    setStep('symptom-submission');
   };
 
   const handlePhotoEdited = (data: {
@@ -80,19 +100,38 @@ export default function PhotoCapturePage() {
     setIsGeneratingQuestions(true);
 
     try {
-      // Generate AI questions based on photo and symptom description
-      const questions = await generateSymptomFollowUpQuestions(
-        photoData?.photoDataUrl || capturedPhoto || '',
-        selectedBodyArea,
-        description
-      );
+      // Generate AI questions based on media type
+      let questions: string[] = [];
+
+      if (mediaType === 'video' && videoBlob) {
+        // For videos, analyze the video and generate specific questions
+        questions = await generateVideoFollowUpQuestions(
+          videoBlob,
+          selectedBodyArea,
+          description,
+          {} // Initial analysis will be done during upload
+        );
+      } else {
+        // For photos, use the existing photo-based question generation
+        questions = await generateSymptomFollowUpQuestions(
+          photoData?.photoDataUrl || capturedPhoto || '',
+          selectedBodyArea,
+          description
+        );
+      }
+
       setAiQuestions(questions);
       setStep('ai-questions');
     } catch (error) {
       console.error('Error generating questions:', error);
       // Proceed without questions on error
       alert('Unable to generate AI questions. Proceeding without them.');
-      await uploadPhotoWithAllData([]);
+
+      if (mediaType === 'video') {
+        await uploadVideoWithAllData([]);
+      } else {
+        await uploadPhotoWithAllData([]);
+      }
     } finally {
       setIsGeneratingQuestions(false);
     }
@@ -102,11 +141,23 @@ export default function PhotoCapturePage() {
     setIsGeneratingQuestions(true);
 
     try {
-      const questions = await generateSymptomFollowUpQuestions(
-        photoData?.photoDataUrl || capturedPhoto || '',
-        selectedBodyArea,
-        symptomDescription
-      );
+      let questions: string[] = [];
+
+      if (mediaType === 'video' && videoBlob) {
+        questions = await generateVideoFollowUpQuestions(
+          videoBlob,
+          selectedBodyArea,
+          symptomDescription,
+          {}
+        );
+      } else {
+        questions = await generateSymptomFollowUpQuestions(
+          photoData?.photoDataUrl || capturedPhoto || '',
+          selectedBodyArea,
+          symptomDescription
+        );
+      }
+
       setAiQuestions(questions);
     } catch (error) {
       console.error('Error regenerating questions:', error);
@@ -118,7 +169,11 @@ export default function PhotoCapturePage() {
 
   const handleAIQuestionsCompleted = async (responses: string[]) => {
     setAiResponses(responses);
-    await uploadPhotoWithAllData(responses);
+    if (mediaType === 'video') {
+      await uploadVideoWithAllData(responses);
+    } else {
+      await uploadPhotoWithAllData(responses);
+    }
   };
 
   const uploadPhotoWithAllData = async (responses: string[]) => {
@@ -157,13 +212,58 @@ export default function PhotoCapturePage() {
     }
   };
 
+  const uploadVideoWithAllData = async (responses: string[]) => {
+    if (!user || !videoBlob || !videoThumbnail) return;
+
+    setIsUploading(true);
+
+    try {
+      const bodyAreaData = {
+        preset: selectedBodyArea as any,
+        customDescription: customBodyArea,
+        isPoseReference: false,
+      };
+
+      // Extract key frames from video for AI analysis
+      const keyFrames = await extractKeyFrames(videoBlob, 5);
+
+      await uploadVideo({
+        videoBlob,
+        thumbnailDataUrl: videoThumbnail,
+        userId: user.uid,
+        bodyArea: bodyAreaData,
+        duration: videoDuration,
+        userGoals: symptomDescription, // For videos, initial description serves as goals
+        symptomSubmission: {
+          description: symptomDescription,
+          aiQuestions,
+          aiResponses: responses,
+          submittedAt: Timestamp.now(),
+        },
+        keyFrames,
+      });
+
+      setStep('complete');
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      alert('Failed to save video. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleCancel = () => {
     if (step === 'complete') {
       router.push('/photos');
     } else if (step === 'ai-questions') {
       setStep('symptom-submission');
     } else if (step === 'symptom-submission') {
-      setStep('timelapse-preference');
+      // For videos, go back to capture; for photos, go to timelapse
+      if (mediaType === 'video') {
+        setStep('capture');
+      } else {
+        setStep('timelapse-preference');
+      }
     } else if (step === 'timelapse-preference') {
       setStep('edit');
     } else if (step === 'edit') {
@@ -171,6 +271,10 @@ export default function PhotoCapturePage() {
       setCapturedPhoto(null);
     } else if (step === 'capture') {
       setStep('select-area');
+      // Clear capture state
+      setCapturedPhoto(null);
+      setVideoBlob(null);
+      setVideoThumbnail(null);
     } else {
       router.push('/photos');
     }
@@ -236,13 +340,25 @@ export default function PhotoCapturePage() {
           )}
 
           {step === 'capture' && user && (
-            <CameraCapture
-              bodyArea={selectedBodyArea}
-              userId={user.uid}
-              onCapture={handlePhotoCapture}
-              onCancel={handleCancel}
-              enablePoseDetection={true}
-            />
+            <>
+              {mediaType === 'video' ? (
+                <VideoCapture
+                  bodyArea={selectedBodyArea}
+                  userId={user.uid}
+                  onCapture={handleVideoCapture}
+                  onCancel={handleCancel}
+                  maxDuration={60}
+                />
+              ) : (
+                <CameraCapture
+                  bodyArea={selectedBodyArea}
+                  userId={user.uid}
+                  onCapture={handlePhotoCapture}
+                  onCancel={handleCancel}
+                  enablePoseDetection={true}
+                />
+              )}
+            </>
           )}
 
           {step === 'edit' && capturedPhoto && (
@@ -263,7 +379,7 @@ export default function PhotoCapturePage() {
             />
           )}
 
-          {step === 'symptom-submission' && photoData && (
+          {step === 'symptom-submission' && (photoData || videoThumbnail) && (
             <>
               {isGeneratingQuestions && (
                 <div className="p-8 text-center">
@@ -276,10 +392,11 @@ export default function PhotoCapturePage() {
               )}
               {!isGeneratingQuestions && (
                 <SymptomSubmissionForm
-                  photoUrl={photoData.photoDataUrl}
+                  photoUrl={mediaType === 'video' ? videoThumbnail || '' : photoData?.photoDataUrl || ''}
                   bodyArea={selectedBodyArea}
                   onSubmit={handleSymptomSubmitted}
                   onCancel={handleCancel}
+                  isVideo={mediaType === 'video'}
                 />
               )}
             </>

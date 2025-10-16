@@ -6,7 +6,15 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm run dev:*)",
       "Bash(taskkill:*)",
-      "Bash(rd /s /q .next)"
+      "Bash(rd /s /q .next)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(uvx:*)",
+      "Bash(npx playwright install)",
+      "Bash(node -e:*)",
+      "Bash(git branch:*)",
+      "Bash(npx playwright:*)"
     ],
     "deny": [],
     "ask": []

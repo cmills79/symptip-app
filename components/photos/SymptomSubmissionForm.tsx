@@ -7,6 +7,7 @@ interface SymptomSubmissionFormProps {
   bodyArea: string;
   onSubmit: (description: string) => void;
   onCancel: () => void;
+  isVideo?: boolean;
 }
 
 const MINIMUM_CHARS = 50;
@@ -17,6 +18,7 @@ export default function SymptomSubmissionForm({
   bodyArea,
   onSubmit,
   onCancel,
+  isVideo = false,
 }: SymptomSubmissionFormProps) {
   const [description, setDescription] = useState('');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -59,21 +61,31 @@ export default function SymptomSubmissionForm({
   return (
     <div className="p-8">
       <h2 className="text-2xl font-bold text-primary mb-2">
-        Describe Your Symptoms
+        {isVideo ? 'Describe What You Documented' : 'Describe Your Symptoms'}
       </h2>
       <p className="text-text-secondary mb-6">
-        Please describe in detail your medical issues and symptoms related to: <span className="font-medium text-primary">{bodyArea}</span>
+        {isVideo
+          ? `Please describe in detail the movements, changes, or symptoms you recorded in the video for: `
+          : `Please describe in detail your medical issues and symptoms related to: `}
+        <span className="font-medium text-primary">{bodyArea}</span>
       </p>
 
       <div className="grid md:grid-cols-2 gap-6 mb-6">
-        {/* Photo preview */}
+        {/* Media preview */}
         <div className="bg-background-paper p-4 rounded-lg border border-primary/20">
-          <h3 className="font-medium text-text-primary mb-3">Your Photo</h3>
+          <h3 className="font-medium text-text-primary mb-3">
+            {isVideo ? 'Video Thumbnail' : 'Your Photo'}
+          </h3>
           <img
             src={photoUrl}
-            alt="Captured photo"
+            alt={isVideo ? 'Video thumbnail' : 'Captured photo'}
             className="w-full rounded-lg"
           />
+          {isVideo && (
+            <p className="text-xs text-text-secondary mt-2">
+              Video will be analyzed for unconventional patterns and movements
+            </p>
+          )}
         </div>
 
         {/* Symptom form */}
@@ -81,30 +93,61 @@ export default function SymptomSubmissionForm({
           <div className="bg-background-paper p-4 rounded-lg border border-primary/20">
             <h3 className="font-medium text-text-primary mb-3">Helpful Prompts</h3>
             <ul className="space-y-2 text-sm text-text-secondary">
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>What symptoms are you experiencing?</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>When did they start?</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>What makes them better or worse?</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>Any pain, itching, burning, or other sensations?</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>Have you noticed any patterns or triggers?</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>What have you tried to treat it?</span>
-              </li>
+              {isVideo ? (
+                <>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Describe the movements you documented</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>When do these movements occur most frequently?</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>What sensations accompany these observations?</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Note any fiber-like structures or unusual textures</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Describe color changes or patterns you see</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>What environmental factors affect the symptoms?</span>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>What symptoms are you experiencing?</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>When did they start?</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>What makes them better or worse?</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Any pain, itching, burning, or other sensations?</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Have you noticed any patterns or triggers?</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>What have you tried to treat it?</span>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
 
@@ -116,7 +159,9 @@ export default function SymptomSubmissionForm({
               <div>
                 <p className="text-sm font-medium text-yellow-800 mb-1">Be as detailed as possible</p>
                 <p className="text-xs text-yellow-700">
-                  The more detail you provide, the better our AI can understand your condition and ask relevant follow-up questions.
+                  {isVideo
+                    ? 'The more detail you provide about movements and observations, the better our AI can analyze unconventional patterns and ask relevant follow-up questions.'
+                    : 'The more detail you provide, the better our AI can understand your condition and ask relevant follow-up questions.'}
                 </p>
               </div>
             </div>
@@ -132,7 +177,11 @@ export default function SymptomSubmissionForm({
             setDescription(e.target.value);
             setShowValidation(false);
           }}
-          placeholder="Describe your symptoms in detail... The more information you provide, the better AI can help identify patterns and ask relevant questions."
+          placeholder={
+            isVideo
+              ? "Describe what you documented in the video... Include details about movements, sensations, fiber-like structures, color changes, when these occur, and any environmental factors."
+              : "Describe your symptoms in detail... The more information you provide, the better AI can help identify patterns and ask relevant questions."
+          }
           rows={8}
           className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none ${
             showValidation && !isValid

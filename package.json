@@ -14,6 +14,12 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:agent": "tsx scripts/run-e2e-agent.ts",
+    "test:agent:interactive": "tsx scripts/run-e2e-agent.ts --interactive",
+    "test:agent:analyze": "tsx scripts/run-e2e-agent.ts --analyze",
+    "test:agent:generate": "tsx scripts/run-e2e-agent.ts --generate",
     "test:all": "npm run test:unit && npm run test:e2e"
   },
   "dependencies": {
@@ -43,6 +49,7 @@
     "jsdom": "^27.0.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.7.1",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }

@@ -1,2 +1,0 @@
-# symptip-app
-Health Tracker

@@ -12,6 +12,10 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isResearchAdmin() {
+      return isAuthenticated() && request.auth.token.researchRole == 'admin';
+    }
+
     // Photos collection
     // Users can only read/write/delete their own photos
     match /photos/{photoId} {
@@ -69,6 +73,16 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isOwner(resource.data.userId);
+    }
+
+    // Research jobs collection (AI autonomy configuration)
+    match /researchJobs/{jobId} {
+      allow read, create, update, delete: if isResearchAdmin();
+    }
+
+    // Research runs collection (execution logs)
+    match /researchRuns/{runId} {
+      allow read, create, update, delete: if isResearchAdmin();
     }
 
     // Deny all other access
