@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidImageFile() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isUnder10MB() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // Photos - stored in /photos/{userId}/{bodyArea}/{filename}
+    match /photos/{userId}/{bodyArea}/{filename} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+                   && isValidImageFile()
+                   && isUnder10MB();
+    }
+
+    // Thumbnails - stored in /thumbnails/{userId}/{bodyArea}/{filename}
+    match /thumbnails/{userId}/{bodyArea}/{filename} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+                   && isValidImageFile()
+                   && isUnder10MB();
+    }
+
+    // Time-lapse videos - stored in /videos/{userId}/{filename}
+    match /videos/{userId}/{filename} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+                   && request.resource.contentType.matches('video/.*')
+                   && request.resource.size < 100 * 1024 * 1024; // 100MB limit for videos
+    }
+
+    // Pose reference photos - stored in /pose-references/{userId}/{bodyArea}/{filename}
+    match /pose-references/{userId}/{bodyArea}/{filename} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+                   && isValidImageFile()
+                   && isUnder10MB();
+    }
+
+    // Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
